@@ -1,25 +1,51 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
 var scene;
 var camera;
 var renderer;
 
+let settings = {
+    sides: 5,
+    radius: 4,
+    depth: 2,
+    speed: 0.75
+}
+
+
+const gui = new GUI();
+gui.add(settings, 'sides', 3, 10, 1);
+gui.add(settings, 'radius', 1, 10);
+gui.add(settings, 'depth', 1, 10);
+gui.add(settings, 'speed', 0, 5);
+
+
 setScene();
-var sides = 5;
-var size = 4;
-var length = 2;
-var numGen = 0;
-const shapeGroup = new THREE.Group();
+
+let shapes = [];
+let numGen = 0;
 
 addLighting();
 
 let controls = new OrbitControls( camera, renderer.domElement );
+
+const clock = new THREE.Clock();
+
 renderer.setAnimationLoop(UpdateScene);
 
 function UpdateScene() {
     controls.update();
+    const delta = clock.getDelta();
+    for (var i = 0; i < shapes.length; i++) {
+        animateObject(shapes[i], delta);
+    }
     renderer.render(scene, camera);
+}
+
+function animateObject(object, delta) {
+    object.rotateZ(delta*settings.speed);
+
 }
 
 function setScene() {
@@ -37,45 +63,39 @@ function setScene() {
 
 
 
-function setDepth(length, shape) {
+function setDepth(depth, shape) {
     const extrudeSettings = {
-        depth: length,
+        depth: 1,
         bevelEnabled: true,
         bevelSize: 0,
         bevelOffset: 0,
-        bevelThickness: length,
+        bevelThickness: depth,
     }
 
 
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     var xTranslate = (Math.random()*20)-10;
     var yTranslate = (Math.random()*20)-10;
-    var zTranslate = (Math.random()*12)-6;
+    var zTranslate = (Math.random()*20)-10;
     geometry.translate(xTranslate, yTranslate, zTranslate);
 
-    var rColor = Math.random()*255;
-    var gColor = Math.random()*255;
-    var bColor = Math.random()*255;
-
-    const shapeColor = new THREE.Color(Math.random(),Math.random(),Math.random());
-    const material = {
-        color: shapeColor,
-        shininess: 100,
-        transparent: true,
-        opacity: 0.8,
-    }
-
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial(material));
-    scene.add(mesh)
+    
+    
+    return geometry;
 }
 
 function addLighting() {
-    const cameraLight = new THREE.PointLight(new THREE.Color(1,1,1), 100);
-    cameraLight.position.set(0, 0, 10);
-    cameraLight.lookAt(0, 0, 0);
-    scene.add(cameraLight);
+    const rightcameraLight = new THREE.PointLight(new THREE.Color(1,1,1), 1000);
+    rightcameraLight.position.set(15, 0, 5);
+    // cameraLight.lookAt(0, 0, 0);
+    scene.add(rightcameraLight);
 
-    const ambientLight = new THREE.AmbientLight(new THREE.Color(1,1,1), 0.2);
+    const leftcameraLight = new THREE.PointLight(new THREE.Color(1,1,1), 1000);
+    leftcameraLight.position.set(-15, 0, -5);
+    // cameraLight.lookAt(0, 0, 0);
+    scene.add(leftcameraLight);
+
+    const ambientLight = new THREE.AmbientLight(new THREE.Color(1,1,1), 1);
     scene.add(ambientLight);
 }
 
@@ -93,18 +113,33 @@ window.addEventListener('resize', resize);
 function AddShape(event) {
     if (event.keyCode == 32) {
         const shapePath = new THREE.Shape();
-        var anglePer = 360/sides;
+        var anglePer = 360/settings.sides;
         
-        shapePath.moveTo(size, 0);
-        for (let i = 1; i <= sides; i++) {
-            shapePath.lineTo( Math.cos(i*anglePer*(Math.PI/180))*size, Math.sin(i*anglePer*(Math.PI/180))*size );
+        shapePath.moveTo(settings.radius, 0);
+        for (let i = 1; i <= settings.sides; i++) {
+            shapePath.lineTo( Math.cos(i*anglePer*(Math.PI/180))*settings.radius, Math.sin(i*anglePer*(Math.PI/180))*settings.radius );
         }
         
         
         // const points = shapePath.getPoints();
-        var finalShape = setDepth(length, shapePath);
-        // shapeGroup.add(finalShape);
-        // numGen += 1;
+        var finalGeometry = setDepth(settings.depth, shapePath);
+
+        var rColor = Math.random()*255;
+        var gColor = Math.random()*255;
+        var bColor = Math.random()*255;
+
+        const shapeColor = new THREE.Color(Math.random(),Math.random(),Math.random());
+        const material = {
+            color: shapeColor,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.8,
+        }
+
+        const mesh = new THREE.Mesh(finalGeometry, new THREE.MeshPhongMaterial(material));
+        shapes[numGen] = mesh.clone();
+        scene.add(shapes[numGen]);
+        numGen += 1;
     }
     
 }
